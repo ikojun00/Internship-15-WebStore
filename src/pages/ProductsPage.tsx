@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   TextField,
@@ -7,6 +7,7 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  SelectChangeEvent,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { Product } from "../types/Product";
@@ -41,13 +42,26 @@ export const ProductsPage = () => {
     loadData();
   }, []);
 
-  const filteredProducts = products
-    .filter(
-      (product) =>
-        product.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        (!selectedCategory || product.category === selectedCategory)
-    )
-    .slice(0, 20);
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+    },
+    []
+  );
+
+  const handleCategoryChange = useCallback((e: SelectChangeEvent<string>) => {
+    setSelectedCategory(e.target.value);
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter(
+        (product) =>
+          product.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          (!selectedCategory || product.category === selectedCategory)
+      )
+      .slice(0, 20);
+  }, [products, searchQuery, selectedCategory]);
 
   if (loading)
     return (
@@ -75,7 +89,7 @@ export const ProductsPage = () => {
           label="Search products"
           variant="outlined"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
           sx={{ flexGrow: 1 }}
         />
         <FormControl sx={{ minWidth: 200 }}>
@@ -83,7 +97,7 @@ export const ProductsPage = () => {
           <Select
             value={selectedCategory}
             label="Category"
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={handleCategoryChange}
           >
             <MenuItem value="">all categories</MenuItem>
             {categories.map((category) => (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { Product } from "../types/Product";
-import { fetchProduct, fetchProducts } from "../services/api";
+import { fetchProduct, fetchProductsByCategory } from "../services/api";
 import { ProductCard } from "../components/ProductCard";
 
 export const ProductPage = () => {
@@ -19,50 +19,54 @@ export const ProductPage = () => {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchRelatedProducts = async () => {
+  const loadProduct = useCallback(async () => {
     try {
-      const products = await fetchProducts();
-      const relatedProducts = products
-        .filter((p) => p.category === product?.category && p.id !== product?.id)
-        .slice(0, 4);
-      setRelatedProducts(relatedProducts);
+      if (!productId) return;
+
+      const localProducts = JSON.parse(
+        localStorage.getItem("products") || "[]"
+      );
+      const localProduct = localProducts.find(
+        (p: Product) => p.id === Number(productId)
+      );
+
+      if (localProduct) {
+        setProduct(localProduct);
+      } else {
+        const fetchedProduct = await fetchProduct(Number(productId));
+        setProduct(fetchedProduct);
+      }
     } catch (error) {
-      console.error("Error loading related products:", error);
+      console.error("Error loading product:", error);
+      navigate("/404");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [productId, navigate]);
 
   useEffect(() => {
-    if (product) fetchRelatedProducts();
-  }, [product]);
+    loadProduct();
+  }, [loadProduct]);
 
   useEffect(() => {
-    const loadProduct = async () => {
+    if (!product) return;
+    const getRelatedProducts = async () => {
       try {
-        if (!productId) return;
+        const products = await fetchProductsByCategory(product.category);
 
-        const localProducts = JSON.parse(
-          localStorage.getItem("products") || "[]"
-        );
-        const localProduct = localProducts.find(
-          (p: Product) => p.id === Number(productId)
-        );
+        const filtered = products
+          .filter((p) => p.id !== product.id)
+          .slice(0, 4);
 
-        if (localProduct) {
-          setProduct(localProduct);
-        } else {
-          const fetchedProduct = await fetchProduct(Number(productId));
-          setProduct(fetchedProduct);
-        }
+        setRelatedProducts(filtered);
       } catch (error) {
-        console.error("Error loading product:", error);
-        navigate("/404");
-      } finally {
-        setLoading(false);
+        console.error("Error loading related products:", error);
+        setRelatedProducts([]);
       }
     };
 
-    loadProduct();
-  }, [productId, navigate]);
+    getRelatedProducts();
+  }, [product]);
 
   if (loading)
     return (
@@ -115,18 +119,20 @@ export const ProductPage = () => {
         </Box>
       </Paper>
 
-      <Box>
-        <Typography variant="h5" gutterBottom>
-          You might also like
-        </Typography>
-        <Grid container spacing={3}>
-          {relatedProducts.map((product) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
-              <ProductCard product={product} />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
+      {relatedProducts.length > 0 && (
+        <Box>
+          <Typography variant="h5" gutterBottom>
+            You might also like
+          </Typography>
+          <Grid container spacing={3}>
+            {relatedProducts.map((product) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
+                <ProductCard product={product} />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
     </Box>
   );
 };
