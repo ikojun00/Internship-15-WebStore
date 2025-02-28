@@ -7,6 +7,13 @@ export const fetchProducts = async (): Promise<Product[]> => {
   return response.json();
 };
 
+export const fetchProductsByCategory = async (
+  category: string
+): Promise<Product[]> => {
+  const response = await fetch(`${API_URL}/products/category/${category}`);
+  return response.json();
+};
+
 export const fetchProduct = async (id: number): Promise<Product> => {
   const response = await fetch(`${API_URL}/products/${id}`);
   return response.json();
